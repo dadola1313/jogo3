@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shape Hunter 💜 - Versão Avançada</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #e6d6f5, #c9a9e9, #a77dd6);
+      color: #4a2b66;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #gameContainer { text-align: center; width: 100%; height: 100%; position: relative; }
+    h1 { font-size: 2.5em; margin: 10px; color: #4a2b66; }
+    button { background: #b086f7; color: white; border: none; padding: 12px 24px; border-radius: 10px; cursor: pointer; font-size: 1.2em; transition: background 0.3s; }
+    button:hover { background: #9a6fe0; }
+
+    #hud { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 30px; font-size: 1.2em; font-weight: bold; }
+
+    #gameArea { width: 100%; height: 100%; position: relative; overflow: hidden; }
+
+    .shape { position: absolute; width: 60px; height: 60px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.3s; }
+
+    .circle { border-radius: 50%; background: #c49ae0; }
+    .square { background: #d1b3f2; }
+    .triangle { width: 0; height: 0; border-left: 30px solid transparent; border-right: 30px solid transparent; border-bottom: 60px solid #b086f7; }
+    .star { width: 0; height: 0; position: relative; display: inline-block; }
+    .star:before { content: '★'; font-size: 60px; color: #9a6fe0; }
+    .heart { position: relative; width: 60px; height: 54px; background: #e6aef7; transform: rotate(-45deg); }
+    .heart:before, .heart:after { content: ''; position: absolute; width: 60px; height: 60px; border-radius: 50%; background: #e6aef7; }
+    .heart:before { top: -30px; left: 0; }
+    .heart:after { left: 30px; top: 0; }
+
+    #startScreen, #endScreen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; }
+    #endScreen { display: none; }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <div id="startScreen">
+      <h1>💜 Shape Hunter 💜</h1>
+      <p>Toque ou clique nas formas corretas para marcar pontos.<br>Evite as formas ruins!<br>Use combos para multiplicar pontos!</p>
+      <button id="startBtn">Iniciar Jogo</button>
+    </div>
+
+    <div id="hud">
+      <div>⏱️ Tempo: <span id="time">45</span></div>
+      <div>⭐ Pontos: <span id="score">0</span></div>
+      <div>❤️ Vidas: <span id="lives">3</span></div>
+      <div>🔥 Combo: <span id="combo">0</span></div>
+      <div>🏆 Recorde: <span id="highScore">0</span></div>
+    </div>
+
+    <div id="gameArea"></div>
+
+    <div id="endScreen">
+      <h1>Fim de jogo!</h1>
+      <p>Sua pontuação: <span id="finalScore">0</span></p>
+      <button id="restartBtn">Jogar Novamente</button>
+    </div>
+  </div>
+
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const startScreen = document.getElementById('startScreen');
+    const endScreen = document.getElementById('endScreen');
+    const gameArea = document.getElementById('gameArea');
+
+    const scoreEl = document.getElementById('score');
+    const timeEl = document.getElementById('time');
+    const livesEl = document.getElementById('lives');
+    const highScoreEl = document.getElementById('highScore');
+    const finalScoreEl = document.getElementById('finalScore');
+    const comboEl = document.getElementById('combo');
+
+    let score = 0, timeLeft = 45, lives = 3, highScore = 0, combo = 0;
+    let gameInterval, timerInterval;
+    let spawnSpeed = 1000;
+
+    const shapes = ['circle','square','triangle','star','heart'];
+
+    function spawnShape() {
+      const shape = document.createElement('div');
+      const type = shapes[Math.floor(Math.random()*shapes.length)];
+      shape.classList.add('shape', type);
+
+      shape.style.top = Math.random()*(gameArea.clientHeight-80)+'px';
+      shape.style.left = Math.random()*(gameArea.clientWidth-80)+'px';
+      shape.style.transform = 'scale(0)';
+      setTimeout(()=>shape.style.transform='scale(1)',10);
+
+      shape.addEventListener('click', () => handleShapeClick(type, shape));
+      shape.addEventListener('touchstart', () => handleShapeClick(type, shape));
+
+      gameArea.appendChild(shape);
+      setTimeout(()=>{ if(gameArea.contains(shape)) gameArea.removeChild(shape); }, 2000);
+    }
+
+    function handleShapeClick(type, shape) {
+      if(type==='circle'||type==='star'||type==='heart'){
+        combo++;
+        score += 10 + combo*2;
+      } else {
+        lives--;
+        combo = 0;
+      }
+      updateHUD();
+      if(gameArea.contains(shape)) gameArea.removeChild(shape);
+      if(lives<=0) endGame();
+    }
+
+    function updateHUD(){
+      scoreEl.textContent=score;
+      livesEl.textContent=lives;
+      comboEl.textContent=combo;
+      if(score>highScore){ highScore=score; highScoreEl.textContent=highScore; }
+    }
+
+    function startGame(){
+      score=0; lives=3; timeLeft=45; combo=0; spawnSpeed=1000;
+      updateHUD(); timeEl.textContent=timeLeft;
+      startScreen.style.display='none'; endScreen.style.display='none'; gameArea.innerHTML='';
+
+      gameInterval = setInterval(()=>{
+        spawnShape();
+        if(spawnSpeed>400) spawnSpeed-=5;
+        clearInterval(gameInterval);
+        gameInterval = setInterval(spawnShape, spawnSpeed);
+      }, spawnSpeed);
+
+      timerInterval = setInterval(()=>{
+        timeLeft--; timeEl.textContent=timeLeft;
+        if(timeLeft<=0) endGame();
+      },1000);
+    }
+
+    function endGame(){
+      clearInterval(gameInterval); clearInterval(timerInterval); gameArea.innerHTML='';
+      finalScoreEl.textContent = score; endScreen.style.display='flex';
+    }
+
+    startBtn.addEventListener('click', startGame);
+    restartBtn.addEventListener('click', startGame);
+  </script>
+</body>
+</html>
